@@ -13,8 +13,9 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.client.RestTemplate;
 
 import java.net.URI;
-import java.util.Map;
-import java.util.HashMap;
+import java.nio.charset.Charset;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Controller
 public class Client {
@@ -25,20 +26,23 @@ public class Client {
 
     @RequestMapping(value = "/")
     public String index(Model model) {
-        model.addAttribute("someAttr", "hoge");
+        //model.addAttribute("someAttr", "hoge");
         return "index";
     }
 
     @RequestMapping(value = "/result", method = RequestMethod.POST)
     public String result(InputForm inputForm, Model model) {
-        // TODO Map じゃあかんのか？
+        // Map(HashMap) だと対応する HttpMessageConverter が設定されていないため 500エラーになる
         MultiValueMap<String,String> map = new LinkedMultiValueMap<>();
         map.add("id", inputForm.getId());
         map.add("name", inputForm.getName());
+        System.out.println("id: " + inputForm.getId());
+        System.out.println("name: " + inputForm.getName());
+        System.out.println("============");
 
         MediaType mediaType = new MediaType(
                 MediaType.APPLICATION_FORM_URLENCODED,
-                Map.of("charset", "windows-31j")
+                Charset.forName("windows-31j")
         );
 
         // TODO タイムアウトの設定とか Charset とか
@@ -58,28 +62,38 @@ public class Client {
         System.out.println("body:");
         System.out.println("  " + res.getBody());
 
+        model.addAttribute("status", res.getStatusCode().toString());
+        List<String> headers = res.getHeaders().entrySet().stream()
+                        .map(e -> e.getKey() + ": "
+                                + e.getValue().stream()
+                                .collect(Collectors.joining(";", "[", "]")))
+                        .collect(Collectors.toList());
+        model.addAttribute("headers", headers);
+        model.addAttribute("body", res.getBody());
         return "result";
     }
 
     public static void main(String[] args) {
         // TODO Map じゃあかんのか？
         MultiValueMap<String,String> map = new LinkedMultiValueMap<>();
-        map.add("key", "value");
+        map.add("key1", "ほげほげ");
+        map.add("key1", "value2");
+        map.add("key2", "valueA");
 
         // TODO タイムアウトの設定とか Charset とか
-        RequestEntity<MultiValueMap<String,String>> request =RequestEntity
+        RequestEntity<MultiValueMap<String,String>> req =RequestEntity
                 .post(URI.create("http://localhost:8080/api/xml"))
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-//                .accept(MediaType.APPLICATION_FORM_URLENCODED)
                 .body(map);
 
         RestTemplate rest = new RestTemplate();
-        ResponseEntity<String> res = rest.exchange(request, String.class);
+        ResponseEntity<String> res = rest.exchange(req, String.class);
         System.out.println("status:");
         System.out.println("  " + res.getStatusCode());
         System.out.println("headers:");
         res.getHeaders().forEach((key, values) -> System.out.println("  " + key + ": " + values));
         System.out.println("body:");
-        System.out.println("  " + res.getBody());
+        res.getBody().lines().forEach(s -> System.out.println("  " + s));
+        // System.out.println("  " + res.getBody());
     }
 }
