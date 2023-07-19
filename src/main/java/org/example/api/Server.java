@@ -16,8 +16,7 @@ public class Server {
         // TODO 受診したリクエストパラメータをXML形式のデータにして返す
         return req.entrySet().stream()
                 .map(e -> "<" + e.getKey() + ">"
-                        + e.getValue().stream()
-                            .collect(Collectors.joining(", "))
+                        + String.join(", ", e.getValue())
                         + "</" + e.getKey() + ">"
                 ).collect(Collectors.joining());
     }
